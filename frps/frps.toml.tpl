@@ -24,4 +24,4 @@ log.level = "info"
 log.maxDays = 3
 
 # === TLS(可选,强制 frpc 用 TLS 连接)===
-# transport.tls.force = true
+transport.tls.force = true
