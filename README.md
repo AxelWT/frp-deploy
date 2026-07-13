@@ -91,18 +91,18 @@ frp-deploy/
 
 > 首次部署或无 GitHub 环境 时使用。
 
-1. **上传 `frps/` 目录到服务器 `/opt/frps/`**:
+1. **上传 `frps/` 目录到服务器 `/app/frps/`**:
 
    ```bash
    # 本地执行
-   rsync -avz frps/ root@<your-server-ip>:/opt/frps/
+   rsync -avz frps/ root@<your-server-ip>:/app/frps/
    ```
 
 2. **在服务器上渲染配置**(替换占位符为真实值):
 
    ```bash
    ssh root@<your-server-ip>
-   cd /opt/frps
+   cd /app/frps
    export FRPS_AUTH_TOKEN="<your-auth-token>"        # 与 frpc 保持一致
    export FRPS_ADMIN_USER="<your-admin-user>"
    export FRPS_ADMIN_PASSWORD="<your-admin-password>"
@@ -257,7 +257,7 @@ frps 的 `vhostHTTPPort` 是 8080,需要一个反向代理把 80/443 流量转�
 ### 服务端 frps
 
 - **CI 升级**(推荐):`Actions` → `Deploy frps` → `Run workflow`,在 `version` 输入框填新版本号(如 `v0.71.0`),留空则仅重新部署当前版本不升级。
-- **手动升级**:SSH 到服务器,`cd /opt/frps && ./frps.sh update v0.71.0`
+- **手动升级**:SSH 到服务器,`cd /app/frps && ./frps.sh update v0.71.0`
 
 ### 客户端 frpc
 

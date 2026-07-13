@@ -1,6 +1,6 @@
 name: Deploy frps
 
-# 将 frps/ 部署到云服务器 /opt/frps,通过 envsubst 渲染含密钥的 frps.toml
+# 将 frps/ 部署到云服务器 /app/frps,通过 envsubst 渲染含密钥的 frps.toml
 # 触发:push 到 main 且 frps/** 有变更,或手动 workflow_dispatch
 
 on:
@@ -27,7 +27,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Sync frps/ to /opt/frps
+      - name: Sync frps/ to /app/frps
         uses: burnett01/rsync-deployments@7.0.1
         with:
           # -a 归档模式 -v 详细 -z 压缩 -r 递归
@@ -35,7 +35,7 @@ jobs:
           # --exclude='frps.toml' 不覆盖服务器上已渲染的配置(下一步会重新生成)
           switches: -avzr --delete --exclude='frps.toml'
           path: frps/
-          remote_path: /opt/frps/
+          remote_path: /app/frps/
           remote_host: ${{ secrets.SSH_HOST }}
           remote_user: ${{ secrets.SSH_USER }}
           remote_port: ${{ secrets.SSH_PORT }}
@@ -56,7 +56,7 @@ jobs:
           envs: FRPS_AUTH_TOKEN,FRPS_ADMIN_USER,FRPS_ADMIN_PASSWORD,VERSION
           script: |
             set -euo pipefail
-            cd /opt/frps
+            cd /app/frps
 
             # 1) 用 envsubst 把 ${VAR} 渲染成真实密钥
             if ! command -v envsubst >/dev/null 2>&1; then
