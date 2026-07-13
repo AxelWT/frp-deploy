@@ -1,0 +1,10 @@
+services:
+  frpc:
+    image: ghcr.io/fatedier/frpc:v0.70.0
+    container_name: frpc
+    restart: unless-stopped
+    volumes:
+      - ./frpc.toml:/etc/frp/frpc.toml:ro
+    command: -c /etc/frp/frpc.toml
+    ports:
+      - "7400:7400"

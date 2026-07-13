@@ -1,0 +1,13 @@
+services:
+  frps:
+    image: ghcr.io/fatedier/frps:v0.70.0
+    container_name: frps
+    restart: unless-stopped
+    volumes:
+      - ./frps.toml:/etc/frp/frps.toml:ro
+    command: -c /etc/frp/frps.toml
+    ports:
+      - "7000:7000"    # bindPort:frpc 连接
+      - "7500:7500"    # dashboard 管理面板
+      - "8080:8080"    # vhostHTTPPort:NPM 转发目标
+      - "8443:8443"    # vhostHTTPSPort:HTTPS(备用)

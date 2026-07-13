@@ -1,0 +1,93 @@
+name: Deploy frps
+
+# 将 frps/ 部署到云服务器 /opt/frps,通过 envsubst 渲染含密钥的 frps.toml
+# 触发:push 到 main 且 frps/** 有变更,或手动 workflow_dispatch
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'frps/**'
+      - '.github/workflows/deploy-frps.yml'
+  workflow_dispatch: # 保留手动入口,方便随时重新部署
+    inputs:
+      version:
+        description: 'frps 镜像版本,如 v0.71.0(留空则仅重新部署当前版本,不升级)'
+        default: ''
+        required: false
+
+# 同一时刻只允许一个部署任务,串行避免互相覆盖
+concurrency:
+  group: deploy-frps
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sync frps/ to /opt/frps
+        uses: burnett01/rsync-deployments@7.0.1
+        with:
+          # -a 归档模式 -v 详细 -z 压缩 -r 递归
+          # --delete 删除服务器上仓库已删除的文件
+          # --exclude='frps.toml' 不覆盖服务器上已渲染的配置(下一步会重新生成)
+          switches: -avzr --delete --exclude='frps.toml'
+          path: frps/
+          remote_path: /opt/frps/
+          remote_host: ${{ secrets.SSH_HOST }}
+          remote_user: ${{ secrets.SSH_USER }}
+          remote_port: ${{ secrets.SSH_PORT }}
+          remote_key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Render config and (re)start container
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          FRPS_AUTH_TOKEN: ${{ secrets.FRPS_AUTH_TOKEN }}
+          FRPS_ADMIN_USER: ${{ secrets.FRPS_ADMIN_USER }}
+          FRPS_ADMIN_PASSWORD: ${{ secrets.FRPS_ADMIN_PASSWORD }}
+          VERSION: ${{ inputs.version }}
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          port: ${{ secrets.SSH_PORT }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          envs: FRPS_AUTH_TOKEN,FRPS_ADMIN_USER,FRPS_ADMIN_PASSWORD,VERSION
+          script: |
+            set -euo pipefail
+            cd /opt/frps
+
+            # 1) 用 envsubst 把 ${VAR} 渲染成真实密钥
+            if ! command -v envsubst >/dev/null 2>&1; then
+              echo "envsubst 未安装,正在安装 gettext..." >&2
+              if command -v apt-get >/dev/null 2>&1; then
+                apt-get update -y && apt-get install -y gettext
+              elif command -v yum >/dev/null 2>&1; then
+                yum install -y gettext
+              else
+                echo "无法自动安装 envsubst,请手动安装 gettext" >&2
+                exit 1
+              fi
+            fi
+
+            export FRPS_AUTH_TOKEN FRPS_ADMIN_USER FRPS_ADMIN_PASSWORD
+            envsubst < frps.toml.tpl > frps.toml
+            chmod 600 frps.toml
+            echo "✅ frps.toml 已渲染"
+
+            # 2) 重建容器:指定版本则升级,否则强制重建当前版本
+            if [ -n "$VERSION" ]; then
+              echo "升级到 ${VERSION}..."
+              ./frps.sh update "$VERSION"
+            else
+              docker compose up -d --force-recreate
+            fi
+            sleep 3
+
+            # 3) 健康检查:输出容器状态 + 探测 dashboard 端口
+            echo "--- 容器状态 ---"
+            docker ps --filter name=frps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
+
+            echo "--- Dashboard 探测 ---"
+            curl -sS -o /dev/null -w "HTTP %{http_code}\n" http://127.0.0.1:7500/ || echo "⚠️ Dashboard 探测失败"
