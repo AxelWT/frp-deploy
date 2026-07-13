@@ -40,8 +40,7 @@
    │   │   │  Proxy    │◀───────│  :7000 (bind)     │   │     │
    │   │   │  Manager  │  :8080  │  :7500 (dashboard)│   │     │
    │   │   │  :80/:443 │         │  :8080 (vhost)    │   │     │
-   │   │   └─────┬─────┘         │  :8443 (vhostTLS) │   │     │
-   │   │         │               └────────▲──────────┘   │     │
+   │   │   └─────┬─────┘         └────────▲──────────┘   │     │
    │   │         │                        │              │     │
    │   │         ▼                        │ frp tunnel   │     │
    │   │   app.your-domain.com             │              │     │
@@ -69,7 +68,7 @@
 ```
 frp-deploy/
 ├── frps/                              # 服务端(部署到云服务器)
-│   ├── docker-compose.yml             # frps 容器定义,暴露 7000/7500/8080/8443
+│   ├── docker-compose.yml             # frps 容器定义,暴露 7000/7500/8080
 │   ├── frps.toml.tpl                  # 配置模板,占位符 ${VAR} 由 CI 渲染
 │   └── frps.sh                        # 管理脚本(start/stop/update/...)
 ├── frpc/                              # 客户端(部署到本地 Mac)
@@ -107,7 +106,6 @@ frp-deploy/
    export FRPS_ADMIN_USER="<your-admin-user>"
    export FRPS_ADMIN_PASSWORD="<your-admin-password>"
    export FRPS_VHOST_HTTP_PORT="8080"               # NPM 转发目标端口,按需修改
-   export FRPS_VHOST_HTTPS_PORT="8443"              # HTTPS 代理端口,按需修改
    envsubst < frps.toml.tpl > frps.toml
    chmod 600 frps.toml
    ```
@@ -136,7 +134,6 @@ frp-deploy/
    | `FRPS_ADMIN_USER` | Dashboard 用户名 | `admin` |
    | `FRPS_ADMIN_PASSWORD` | Dashboard 密码 | `strong-password` |
    | `FRPS_VHOST_HTTP_PORT` | HTTP 代理流量入口端口(NPM 转发目标) | `8080` |
-   | `FRPS_VHOST_HTTPS_PORT` | HTTPS 代理流量入口端口(备用) | `8443` |
 
 2. **触发部署**(二选一):
    - **自动**:push 到 `main` 分支且 `frps/**` 有变更
@@ -199,7 +196,6 @@ frp-deploy/
 | `bindAddr` | `0.0.0.0` | 监听地址,公网服务保持 0.0.0.0 |
 | `bindPort` | `7000` | frpc 连接端口,客户端 `serverPort` 必须一致 |
 | `vhostHTTPPort` | `${FRPS_VHOST_HTTP_PORT}` | HTTP 代理流量入口,由 Secret 渲染(默认 8080) |
-| `vhostHTTPSPort` | `${FRPS_VHOST_HTTPS_PORT}` | HTTPS 代理流量入口,由 Secret 渲染(默认 8443) |
 | `auth.token` | `${FRPS_AUTH_TOKEN}` | 认证 token,与 frpc 必须完全一致 |
 | `webServer.addr` | `0.0.0.0` | Dashboard 监听地址 |
 | `webServer.port` | `7500` | Dashboard 端口 |
@@ -292,7 +288,7 @@ cd frpc
 - **envsubst 密码字符**:Dashboard / admin UI 密码请避免包含 `"` `$` `\` 字符,否则 `envsubst` 渲染会破坏 TOML 字符串语法或触发二次替换,导致 frp 启动失败。建议用字母数字 + `-_@#%^&` 等安全字符。
 - **升级前备份**:`./frps.sh update` 会改写 `docker-compose.yml`,建议升级前 `cp docker-compose.yml docker-compose.yml.bak`。
 - **Mac frpc 的 host.docker.internal**:这是 Docker Desktop 提供的固定名称,容器通过它访问 Mac 宿主机服务。Linux 上需用 `--add-host=host.docker.internal:host-gateway` 或改用宿主机内网 IP。
-- **防火墙放行端口**:frps 服务器需放行 `7000`(frpc 连接)、`7500`(Dashboard)、`8080`(vhost HTTP)、`8443`(vhost HTTPS,如启用)。80/443 由 NPM 占用。
+- **防火墙放行端口**:frps 服务器需放行 `7000`(frpc 连接)、`7500`(Dashboard)、`8080`(vhost HTTP)。80/443 由 NPM 占用。
 - **token 一致性**:frps 的 `FRPS_AUTH_TOKEN` 与 frpc 的 `auth.token` 必须**完全一致**,否则 frpc 无法连接。
 - **frpc 不需要 CI**:frpc 跑在本地 Mac,改配置后渲染 `frpc.toml` 再 `./frpc.sh restart` 即可,无需走 GitHub Actions。
 - **frpc admin UI 不暴露公网**:模板已移除把 7400 端口反代到公网的 `[[proxies]]`,admin UI 仅本地访问。如确需远程热重载,请用 SSH 隧道而非公网反代。

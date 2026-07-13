@@ -48,14 +48,13 @@ jobs:
           FRPS_ADMIN_USER: ${{ secrets.FRPS_ADMIN_USER }}
           FRPS_ADMIN_PASSWORD: ${{ secrets.FRPS_ADMIN_PASSWORD }}
           FRPS_VHOST_HTTP_PORT: ${{ secrets.FRPS_VHOST_HTTP_PORT }}
-          FRPS_VHOST_HTTPS_PORT: ${{ secrets.FRPS_VHOST_HTTPS_PORT }}
           VERSION: ${{ inputs.version }}
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           port: ${{ secrets.SSH_PORT }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          envs: FRPS_AUTH_TOKEN,FRPS_ADMIN_USER,FRPS_ADMIN_PASSWORD,FRPS_VHOST_HTTP_PORT,FRPS_VHOST_HTTPS_PORT,VERSION
+          envs: FRPS_AUTH_TOKEN,FRPS_ADMIN_USER,FRPS_ADMIN_PASSWORD,FRPS_VHOST_HTTP_PORT,VERSION
           script: |
             set -euo pipefail
             cd /app/frps
@@ -73,7 +72,7 @@ jobs:
               fi
             fi
 
-            export FRPS_AUTH_TOKEN FRPS_ADMIN_USER FRPS_ADMIN_PASSWORD FRPS_VHOST_HTTP_PORT FRPS_VHOST_HTTPS_PORT
+            export FRPS_AUTH_TOKEN FRPS_ADMIN_USER FRPS_ADMIN_PASSWORD FRPS_VHOST_HTTP_PORT
             envsubst < frps.toml.tpl > frps.toml
             chmod 600 frps.toml
             echo "✅ frps.toml 已渲染"
