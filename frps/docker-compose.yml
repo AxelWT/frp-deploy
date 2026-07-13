@@ -9,5 +9,5 @@ services:
     ports:
       - "7000:7000"    # bindPort:frpc 连接
       - "7500:7500"    # dashboard 管理面板
-      - "8080:8080"    # vhostHTTPPort:NPM 转发目标
-      - "8443:8443"    # vhostHTTPSPort:HTTPS(备用)
+      - "${FRPS_VHOST_HTTP_PORT:-8080}:${FRPS_VHOST_HTTP_PORT:-8080}"    # vhostHTTPPort:NPM 转发目标
+      - "${FRPS_VHOST_HTTPS_PORT:-8443}:${FRPS_VHOST_HTTPS_PORT:-8443}"  # vhostHTTPSPort:HTTPS(备用)

@@ -106,6 +106,8 @@ frp-deploy/
    export FRPS_AUTH_TOKEN="<your-auth-token>"        # 与 frpc 保持一致
    export FRPS_ADMIN_USER="<your-admin-user>"
    export FRPS_ADMIN_PASSWORD="<your-admin-password>"
+   export FRPS_VHOST_HTTP_PORT="8080"               # NPM 转发目标端口,按需修改
+   export FRPS_VHOST_HTTPS_PORT="8443"              # HTTPS 代理端口,按需修改
    envsubst < frps.toml.tpl > frps.toml
    chmod 600 frps.toml
    ```
@@ -133,6 +135,8 @@ frp-deploy/
    | `FRPS_AUTH_TOKEN` | frp 认证 token,需与 frpc 一致 | `long-random-string` |
    | `FRPS_ADMIN_USER` | Dashboard 用户名 | `admin` |
    | `FRPS_ADMIN_PASSWORD` | Dashboard 密码 | `strong-password` |
+   | `FRPS_VHOST_HTTP_PORT` | HTTP 代理流量入口端口(NPM 转发目标) | `8080` |
+   | `FRPS_VHOST_HTTPS_PORT` | HTTPS 代理流量入口端口(备用) | `8443` |
 
 2. **触发部署**(二选一):
    - **自动**:push 到 `main` 分支且 `frps/**` 有变更
@@ -194,8 +198,8 @@ frp-deploy/
 |---|---|---|
 | `bindAddr` | `0.0.0.0` | 监听地址,公网服务保持 0.0.0.0 |
 | `bindPort` | `7000` | frpc 连接端口,客户端 `serverPort` 必须一致 |
-| `vhostHTTPPort` | `8080` | HTTP 代理流量入口,NPM 转发目标 |
-| `vhostHTTPSPort` | `8443` | HTTPS 代理流量入口(备用) |
+| `vhostHTTPPort` | `${FRPS_VHOST_HTTP_PORT}` | HTTP 代理流量入口,由 Secret 渲染(默认 8080) |
+| `vhostHTTPSPort` | `${FRPS_VHOST_HTTPS_PORT}` | HTTPS 代理流量入口,由 Secret 渲染(默认 8443) |
 | `auth.token` | `${FRPS_AUTH_TOKEN}` | 认证 token,与 frpc 必须完全一致 |
 | `webServer.addr` | `0.0.0.0` | Dashboard 监听地址 |
 | `webServer.port` | `7500` | Dashboard 端口 |
@@ -241,12 +245,14 @@ frp-deploy/
 
 frps 的 `vhostHTTPPort` 是 8080,需要一个反向代理把 80/443 流量转发过去。推荐 [Nginx Proxy Manager](https://nginxproxymanager.com/):
 
+> ⚠️ 若修改了 `FRPS_VHOST_HTTP_PORT` Secret,NPM 的 Forward Port 必须同步修改,否则 502。
+
 1. **DNS**:将域名(如 `app.your-domain.com`)A 记录解析到 frps 服务器 IP。
 2. **创建 Proxy Host**(NPM 后台 → `Hosts` → `Proxy Hosts` → `Add Proxy Host`):
    - Domain Names: `app.your-domain.com`
    - Scheme: `http`
    - Forward Hostname / IP: `127.0.0.1`(NPM 与 frps 同机时)
-   - Forward Port: `8080`(frps 的 `vhostHTTPPort`)
+   - Forward Port: 与 `FRPS_VHOST_HTTP_PORT` Secret 一致(默认 `8080`)
 3. **SSL**:勾选 `Request a new SSL Certificate` + `Force SSL`,同意 Let's Encrypt 条款,保存。
 4. **验证**:浏览器访问 `https://app.your-domain.com`。
 

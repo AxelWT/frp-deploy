@@ -5,8 +5,8 @@
 # === 监听 ===
 bindAddr = "0.0.0.0"
 bindPort = 7000                     # frpc 连接端口
-vhostHTTPPort = 8080                # HTTP 代理流量入口(NPM 转发到此)
-vhostHTTPSPort = 8443               # HTTPS 代理流量入口(备用)
+vhostHTTPPort = ${FRPS_VHOST_HTTP_PORT}     # HTTP 代理流量入口(NPM 转发到此),由 Secret 渲染
+vhostHTTPSPort = ${FRPS_VHOST_HTTPS_PORT}   # HTTPS 代理流量入口(备用),由 Secret 渲染
 
 # === 认证 ===
 auth.method = "token"
