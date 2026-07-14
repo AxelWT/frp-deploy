@@ -54,3 +54,45 @@ type = "http"
 localIP = "host.docker.internal"
 localPort = 8004                                # TODO: 替换为 Mac 上 Web 服务实际端口
 customDomains = ["app2.your-domain.com"]        # TODO: 替换为已解析到 frps 的域名
+
+# ==========================================================================
+# P2P 直连代理(xtcp 优先 + stcp 兜底)
+#   - xtcp: 两个 frpc 之间直连打洞,流量不经 frps(适合 NAT 友好场景)
+#   - stcp: 经 frps 中转但端到端加密(visitor fallbackTo 指向此项)
+#   - frps 端无需改动,均走现有 7000 端口做信令 / 中转
+#   - 需在 frps 服务器防火墙放行 7000/udp,否则 xtcp 必失败,自动走 stcp
+#   - secretKey 是两端握手密钥,独立于 auth.token,需与 visitor 端一致
+#   - 渲染变量:FRPC_P2P_SECRET(独立握手密钥)
+# ==========================================================================
+
+# === app1 P2P:xtcp 直连(优先) ===
+[[proxies]]
+name = "app1-p2p"
+type = "xtcp"
+localIP = "host.docker.internal"
+localPort = 2026                                # 与 app1-frp 的 localPort 保持一致
+secretKey = "${FRPC_P2P_SECRET}"                # TODO: 与 visitor 端 FRPC_P2P_SECRET 完全一致
+
+# === app1 P2P:stcp 中转兜底(供 visitor fallbackTo) ===
+[[proxies]]
+name = "app1-stcp"
+type = "stcp"
+localIP = "host.docker.internal"
+localPort = 2026
+secretKey = "${FRPC_P2P_SECRET}"                # 与 app1-p2p 共用同一密钥
+
+# === app2 P2P:xtcp 直连(优先,复制此两段可添加更多 P2P 代理) ===
+[[proxies]]
+name = "app2-p2p"
+type = "xtcp"
+localIP = "host.docker.internal"
+localPort = 8004                                # 与 app2-frp 的 localPort 保持一致
+secretKey = "${FRPC_P2P_SECRET}"
+
+# === app2 P2P:stcp 中转兜底 ===
+[[proxies]]
+name = "app2-stcp"
+type = "stcp"
+localIP = "host.docker.internal"
+localPort = 8004
+secretKey = "${FRPC_P2P_SECRET}"

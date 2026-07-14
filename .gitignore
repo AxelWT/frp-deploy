@@ -1,6 +1,7 @@
 # 本地渲染生成的配置(含真实密钥,禁止入库)
 frps/frps.toml
 frpc/frpc.toml
+frpc-visitor/visitor.toml
 
 # IDE 配置
 .idea/

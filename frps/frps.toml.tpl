@@ -4,7 +4,8 @@
 
 # === 监听 ===
 bindAddr = "0.0.0.0"
-bindPort = 7000                     # frpc 连接端口
+bindPort = 7000                     # frpc 连接端口(TCP)
+bindUDPPort = 7000                  # xtcp P2P 打洞协调端口(UDP);与 bindPort 同号无冲突(TCP/UDP 独立命名空间)
 vhostHTTPPort = ${FRPS_VHOST_HTTP_PORT}     # HTTP 代理流量入口(NPM 转发到此),由 Secret 渲染
 
 # === 认证 ===

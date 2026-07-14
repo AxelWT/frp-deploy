@@ -1,0 +1,12 @@
+services:
+  frpc-visitor:
+    image: ghcr.io/fatedier/frpc:v0.70.0
+    container_name: frpc-visitor
+    restart: unless-stopped
+    volumes:
+      - ./visitor.toml:/etc/frp/visitor.toml:ro
+    command: -c /etc/frp/visitor.toml
+    ports:
+      - "127.0.0.1:7400:7400"      # admin UI:仅本机访问(热重载用)
+      - "127.0.0.1:12026:12026"    # app1 xtcp visitor(失败自动 fallback 到 stcp)
+      - "127.0.0.1:12028:12028"    # app2 xtcp visitor(失败自动 fallback 到 stcp)

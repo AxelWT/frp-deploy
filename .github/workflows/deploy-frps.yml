@@ -90,5 +90,17 @@ jobs:
             echo "--- 容器状态 ---"
             docker ps --filter name=frps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
 
+            echo "--- 防火墙放行 7000/udp (xtcp 打洞必需) ---"
+            # ufw 优先,fallback 到 iptables;两者都不可用则仅提示
+            if command -v ufw >/dev/null 2>&1; then
+              ufw allow 7000/udp || echo "⚠️ ufw allow 失败,请手动放行 7000/udp"
+            elif command -v iptables >/dev/null 2>&1; then
+              iptables -C INPUT -p udp --dport 7000 -j ACCEPT 2>/dev/null \
+                || iptables -I INPUT -p udp --dport 7000 -j ACCEPT \
+                || echo "⚠️ iptables 放行失败,请手动放行 7000/udp"
+            else
+              echo "⚠️ 未找到 ufw/iptables,请手动放行 7000/udp 以启用 xtcp P2P 直连"
+            fi
+
             echo "--- Dashboard 探测 ---"
             curl -sS -o /dev/null -w "HTTP %{http_code}\n" http://127.0.0.1:7500/ || echo "⚠️ Dashboard 探测失败"
