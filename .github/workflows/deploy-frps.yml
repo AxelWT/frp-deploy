@@ -90,8 +90,10 @@ jobs:
             echo "--- 容器状态 ---"
             docker ps --filter name=frps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
 
-            echo "--- 防火墙放行 7000/udp (xtcp 打洞必需) ---"
+            echo "--- 防火墙放行 7000/udp (防御性规则,供 xtcp 将来使用) ---"
             # ufw 优先,fallback 到 iptables;两者都不可用则仅提示
+            # 注:frps v0.70.0 实测不识别 bindUDPPort 字段,当前未启用 UDP 监听;
+            # 此规则为防御性放行,幂等无害,将来确认 xtcp 需要 UDP 时可立即使用
             if command -v ufw >/dev/null 2>&1; then
               ufw allow 7000/udp || echo "⚠️ ufw allow 失败,请手动放行 7000/udp"
             elif command -v iptables >/dev/null 2>&1; then
@@ -99,7 +101,7 @@ jobs:
                 || iptables -I INPUT -p udp --dport 7000 -j ACCEPT \
                 || echo "⚠️ iptables 放行失败,请手动放行 7000/udp"
             else
-              echo "⚠️ 未找到 ufw/iptables,请手动放行 7000/udp 以启用 xtcp P2P 直连"
+              echo "⚠️ 未找到 ufw/iptables,如需 xtcp P2P 直连请手动放行 7000/udp"
             fi
 
             echo "--- Dashboard 探测 ---"

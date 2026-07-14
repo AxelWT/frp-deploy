@@ -60,7 +60,7 @@ customDomains = ["app2.your-domain.com"]        # TODO: 替换为已解析到 fr
 #   - xtcp: 两个 frpc 之间直连打洞,流量不经 frps(适合 NAT 友好场景)
 #   - stcp: 经 frps 中转但端到端加密(visitor fallbackTo 指向此项)
 #   - frps 端无需改动,均走现有 7000 端口做信令 / 中转
-#   - 需在 frps 服务器防火墙放行 7000/udp,否则 xtcp 必失败,自动走 stcp
+#   - 需在 frps 服务器防火墙放行 7000/tcp(frpc 连接);xtcp 是否需 frps 端 UDP 监听待验证,失败自动走 stcp
 #   - secretKey 是两端握手密钥,独立于 auth.token,需与 visitor 端一致
 #   - 渲染变量:FRPC_P2P_SECRET(独立握手密钥)
 # ==========================================================================
