@@ -1,0 +1,24 @@
+services:
+  pi-web:
+    build:
+      context: .
+      args:
+        PI_WEB_VERSION: 0.10.3
+    image: local/pi-web:0.10.3
+    container_name: pi-web
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:30141:30141"
+    volumes:
+      # pi-agent 会话数据(读写:pi-web 写新会话)
+      - "${HOME}/.pi:/root/.pi"
+      # pi-web 运行时(detach PID/日志等)
+      - "${HOME}/.pi-web:/root/.pi-web"
+      # 项目目录(coding agent 读写代码;如只读把 :rw 改 :ro)
+      - "${HOME}/PycharmProjects:/root/PycharmProjects:rw"
+      - "${HOME}/Documents:/root/Documents:rw"
+    environment:
+      - PI_WEB_HOSTNAME=0.0.0.0
+      - PI_WEB_NO_OPEN=1
+      - PI_WEB_ALLOWED_HOSTS=mpiweb.axello.cn
+      # 可选:PI_WEB_PASSWORD=xxx  # 启用 HTTP Basic Auth(用户名 pi)

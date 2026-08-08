@@ -82,6 +82,10 @@ frp-deploy/
 │   ├── docker-compose.yml             # visitor 容器定义,暴露 7400 + 各 visitor bindPort
 │   ├── visitor.toml.tpl               # visitor 配置模板(xtcp 优先 + stcp fallback)
 │   └── frpc-visitor.sh                # 管理脚本
+├── pi-web/                            # pi-web 容器(可选,本地 Mac 跑 pi coding agent 的 Web UI)
+│   ├── Dockerfile                     # 基于 node:22-alpine,npm install -g @axello/pi-web
+│   ├── docker-compose.yml             # 容器定义,挂载 ~/.pi / ~/.pi-web / 项目目录,暴露 30141
+│   └── pi-web.sh                      # 管理脚本(start/stop/restart/status/logs/update/clean)
 ├── .github/
 │   └── workflows/
 │       └── deploy-frps.yml            # frps 自动部署工作流
@@ -295,6 +299,60 @@ frp-deploy/
 | 变量 | 用途 | 分发渠道 |
 |---|---|---|
 | `FRPC_P2P_SECRET` | xtcp/stcp 握手密钥,独立于 `auth.token` | Mac 端 envsubst + 访问端 envsubst;通过 1Password / 加密 IM 分发给固定用户,不入 git |
+
+### Part 4: pi-web(可选)/ 本地 Web UI 容器
+
+> 在本地 Mac 用容器跑 [`@axello/pi-web`](https://www.npmjs.com/package/@axello/pi-web)(pi coding agent 的 Web UI),
+> 挂载 `~/.pi` / `~/.pi-web` 及项目目录,浏览器访问 `http://127.0.0.1:30141` 即可。
+> 与 frp 体系相互独立,仅供本机使用,不涉及公网流量。
+
+#### 前置条件
+
+- 已装 Docker Desktop(Mac)
+- Node 由容器提供(`node:22-alpine`,满足 pi-web 要求的 `>=22.19.0`),宿主机无需预装 Node
+
+#### 部署步骤
+
+1. **启动**(首次会拉 `node:22-alpine` 并 `npm install -g @axello/pi-web`,稍慢):
+
+   ```bash
+   cd pi-web
+   ./pi-web.sh start
+   ```
+
+2. **验证**:浏览器访问 `http://127.0.0.1:30141`,或 `curl -I http://127.0.0.1:30141`。
+
+3. **查看日志 / 状态**:
+
+   ```bash
+   ./pi-web.sh logs
+   ./pi-web.sh status
+   ```
+
+#### 挂载说明
+
+| 宿主机路径 | 容器路径 | 权限 | 用途 |
+|---|---|---|---|
+| `~/.pi` | `/root/.pi` | rw | pi-agent 会话数据 |
+| `~/.pi-web` | `/root/.pi-web` | rw | pi-web 运行时(detach PID/日志等) |
+| `~/PycharmProjects` | `/root/PycharmProjects` | rw | 项目代码(coding agent 读写) |
+| `~/Documents` | `/root/Documents` | rw | 文档工作区 |
+
+> 项目目录若只希望 pi-web 只读访问,把 `docker-compose.yml` 里对应行的 `:rw` 改 `:ro`。
+> 挂载路径在 `docker-compose.yml` 中用 `${HOME}` 表达,Docker Compose 自动解析为宿主机家目录,无需额外渲染。
+
+#### 升级 pi-web 版本
+
+```bash
+cd pi-web
+./pi-web.sh update 0.11.0      # 脚本会改 compose 并重建镜像
+```
+
+#### 与其他组件的关系
+
+- **端口独立**:pi-web 用 `127.0.0.1:30141`,与 frps/frpc/frpc-visitor 的端口无冲突,可同机共存
+- **配置无密钥**:pi-web 目录全为模板文件,无渲染产物,直接入库安全
+- **不参与 CI/CD**:仅本机运行,无需 GitHub Actions
 
 ## ⚙️ Configuration Reference / 配置详解
 
