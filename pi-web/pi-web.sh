@@ -14,7 +14,8 @@ Usage: $(basename "$0") <command>
 Commands:
   start           构建镜像并启动容器 (docker compose up -d --build)
   stop            停止容器
-  restart         重启容器
+  restart         重启容器(不重新读取 docker-compose.yml)
+  recreate        重建容器(应用 environment 等配置变更)
   status          查看容器状态
   logs            跟踪日志 (Ctrl+C 退出)
   update <ver>    升级 pi-web 版本,例如: ./pi-web.sh update 0.11.0
@@ -45,6 +46,10 @@ case "${1:-}" in
     restart)
         $COMPOSE restart
         echo "已重启。"
+        ;;
+    recreate)
+        $COMPOSE up -d
+        echo "已根据当前 docker-compose.yml 重建容器(应用 environment 等配置变更)。"
         ;;
     status)
         $COMPOSE ps
