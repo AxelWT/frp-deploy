@@ -18,8 +18,12 @@ services:
       # 项目目录(coding agent 读写代码;如只读把 :rw 改 :ro)
       - "${HOME}/PycharmProjects:/root/PycharmProjects:rw"
       - "${HOME}/Documents:/root/Documents:rw"
+      # 网页终端 SSH 回宿主机用的专用私钥(只读)
+      - "${HOME}/.ssh/pi-web-terminal:/ssh/pi-web-terminal:ro"
     environment:
       - PI_WEB_HOSTNAME=0.0.0.0
       - PI_WEB_NO_OPEN=1
       - PI_WEB_ALLOWED_HOSTS=mpiweb.axello.cn
+      # 网页终端的 shell 指向 SSH 包装脚本 → 连接 Mac 宿主机而非容器内
+      - PTY_SHELL=/usr/local/bin/mac-shell
       # 可选:PI_WEB_PASSWORD=xxx  # 启用 HTTP Basic Auth(用户名 pi)
