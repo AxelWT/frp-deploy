@@ -3,12 +3,13 @@ services:
     build:
       context: .
       args:
-        PI_WEB_VERSION: 0.10.3
-    image: local/pi-web:0.10.3
+        PI_WEB_VERSION: 0.10.5
+    image: local/pi-web:0.10.5
     container_name: pi-web
     restart: unless-stopped
     ports:
       - "127.0.0.1:30141:30141"
+      # 0.10.5 起终端走同源代理(/api/terminal/socket.io),pty-server 无需对外发布端口
     volumes:
       # pi-agent 会话数据(读写:pi-web 写新会话)
       - "${HOME}/.pi:/root/.pi"
