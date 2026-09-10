@@ -3,8 +3,8 @@ services:
     build:
       context: .
       args:
-        PI_WEB_VERSION: 0.10.5
-    image: local/pi-web:0.10.5
+        PI_WEB_VERSION: 0.10.6
+    image: local/pi-web:0.10.6
     container_name: pi-web
     restart: unless-stopped
     ports:
