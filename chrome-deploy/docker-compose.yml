@@ -1,0 +1,20 @@
+services:
+  chromium:
+    image: lscr.io/linuxserver/chromium:b1ee1dc8-ls55
+    container_name: chromium
+    restart: unless-stopped
+    security_opt:
+      - seccomp:unconfined     # Chromium 沙箱在 Docker 内需要
+    shm_size: "1gb"            # 过小会导致重负载页面(视频)标签页崩溃
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Asia/Shanghai
+      - TITLE=Chrome           # 网页 UI 标签标题
+      - CUSTOM_USER=${CHROME_USER}       # 容器层 HTTP Basic Auth
+      - PASSWORD=${CHROME_PASSWORD}
+      # - CHROME_CLI=https://www.baidu.com   # 可选:启动页 URL 或 Chromium 启动参数
+    volumes:
+      - ./config:/config       # 浏览器 profile/下载持久化,可直接在 Finder 访问
+    ports:
+      - "127.0.0.1:3000:3000"  # 仅本机回环;frpc 经 host.docker.internal 访问(已验证可行)

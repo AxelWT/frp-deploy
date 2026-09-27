@@ -82,6 +82,10 @@ frp-deploy/
 │   ├── docker-compose.yml             # visitor 容器定义,暴露 7400 + 各 visitor bindPort
 │   ├── visitor.toml.tpl               # visitor 配置模板(xtcp 优先 + stcp fallback)
 │   └── frpc-visitor.sh                # 管理脚本
+├── chrome-deploy/                     # 网页版 Chrome(可选,linuxserver/chromium + Selkies)
+│   ├── docker-compose.yml             # chromium 容器,127.0.0.1:3000 网页 UI
+│   ├── .env.example                   # 登录凭据模板(cp 为 .env 填真实值,不入库)
+│   └── chrome.sh                      # 管理脚本
 ├── .github/
 │   └── workflows/
 │       └── deploy-frps.yml            # frps 自动部署工作流
@@ -296,6 +300,37 @@ frp-deploy/
 |---|---|---|
 | `FRPC_P2P_SECRET` | xtcp/stcp 握手密钥,独立于 `auth.token` | Mac 端 envsubst + 访问端 envsubst;通过 1Password / 加密 IM 分发给固定用户,不入 git |
 
+### Part 4: 网页版 Chrome(chrome-deploy,可选)
+
+> 在浏览器里直接操作的完整 Chrome(苹果 Silicon 原生 arm64 镜像,Selkies 网页串流,支持剪贴板同步/文件上传/音频),经 frp 暴露到公网。
+
+1. **配置凭据并启动**:
+
+   ```bash
+   cd chrome-deploy
+   cp .env.example .env        # 填 CHROME_USER / CHROME_PASSWORD
+   ./chrome.sh start
+   ```
+
+2. **本地验证**:`http://127.0.0.1:3000`,输入 `.env` 中凭据应看到 Chrome 桌面。
+
+3. **在 `frpc/frpc.toml` 追加代理**(凭据与 `.env` 保持一致,浏览器只输一次密码同时通过 frp 和容器两层):
+
+   ```toml
+   [[proxies]]
+   name = "chrome-mini"
+   type = "http"
+   localIP = "host.docker.internal"
+   localPort = 3000
+   customDomains = ["mchrome.axello.cn"]
+   httpUser = "<同 CHROME_USER>"
+   httpPassword = "<同 CHROME_PASSWORD>"
+   ```
+
+   然后 `cd frpc && ./frpc.sh reload`(若报 `no such file or directory` 见故障排查表)。
+
+4. **DNS + NPM**:域名 A 记录解析到 frps 服务器 IP,NPM 建 Proxy Host 时**必须勾选 Websockets Support 并加长超时**,详见 [Nginx Proxy Manager 配置](#-nginx-proxy-manager-配置)。
+
 ## ⚙️ Configuration Reference / 配置详解
 
 ### `frps.toml.tpl` 关键字段
@@ -364,6 +399,7 @@ frp-deploy/
 
 > frpc 把 `frps` 换成 `frpc` 即可,例如 `./frpc.sh start`。
 > frpc-visitor 同理,在 `frpc-visitor/` 目录下执行 `./frpc-visitor.sh start`。
+> chrome-deploy 同理,在 `chrome-deploy/` 目录下执行 `./chrome.sh start`(无 `reload` 命令;`update <ver>` 的 tag 形如 `b1ee1dc8-ls55`,见 [Docker Hub tags](https://hub.docker.com/r/linuxserver/chromium/tags))。
 
 ## 🌐 Nginx Proxy Manager 配置
 
@@ -381,6 +417,20 @@ frps 的 `vhostHTTPPort` 是 8080,需要一个反向代理把 80/443 流量转�
 4. **验证**:浏览器访问 `https://app.your-domain.com`。
 
 > 若 NPM 与 frps 不同机,Forward IP 填 frps 服务器内网 IP。
+
+**网页版 Chrome(`mchrome.axello.cn`)的额外要求**:Selkies 视频流走单条长连接 WebSocket,创建该 Proxy Host 时除常规配置外还需:
+
+1. 勾选 **Websockets Support**;
+2. 在 **Advanced** 标签页追加以下配置(默认 60s 超时会掐断视频流):
+
+   ```nginx
+   proxy_read_timeout 86400s;
+   proxy_send_timeout 86400s;
+   proxy_buffering off;
+   client_max_body_size 0;
+   ```
+
+> 注:当前线上 frps 的 `vhostHTTPPort` 实际为 **8006**(部署时 `FRPS_VHOST_HTTP_PORT` 覆盖过默认值 8080),NPM Forward Port 请按实际值填;可用 `./frpc.sh status` 输出的 RemoteAddr 列核实。
 
 ## ⬆️ Upgrade / 升级版本
 
@@ -403,6 +453,15 @@ cd frpc-visitor
 ./frpc-visitor.sh update v0.71.0
 ```
 
+### 网页版 Chrome(chromium)
+
+```bash
+cd chrome-deploy
+./chrome.sh update b1ee1dc8-ls55   # tag 见 https://hub.docker.com/r/linuxserver/chromium/tags
+```
+
+> chromium 与 frp 无协议耦合,无需与 frps/frpc 版本同步;升级后 `config/` 目录保留,浏览器配置不丢失。
+
 脚本会自动修改 `docker-compose.yml` 中的镜像 tag 并重建容器。
 
 > ⚠️ **版本同步**:frps / frpc / frpc-visitor 三端的镜像版本需保持一致,避免协议不兼容。升级时分别执行三个 `update` 脚本(或 CI 升级 frps 后,Mac 端和访问端各跑一次对应脚本)。
@@ -422,6 +481,10 @@ cd frpc-visitor
 | visitor 启动报 `bind: address already in use` | 修改 `visitor.toml` 中对应 visitor 的 `bindPort`(默认 12026 / 12028),并在 `docker-compose.yml` 的 `ports` 同步修改 |
 | visitor 连不上(超时) | 1. `serverName` 是否与被访问端 `[[proxies]].name` 完全一致;2. `secretKey`(`FRPC_P2P_SECRET`)两端是否一致;3. 被访问端 frpc 是否在线(`./frpc.sh status`);4. frps 是否可达 |
 | visitor 日志无 `fallback to stcp` 也连不通 | 1. `fallbackTo` 指向的 stcp proxy name 是否正确;2. 被访问端是否同时配置了 xtcp + stcp 两段 proxy |
+| Chrome 标签页崩溃("Aw, Snap!") | `shm_size` 不足,把 `chrome-deploy/docker-compose.yml` 的 `shm_size` 提到 `2gb` 后 `./chrome.sh restart` |
+| Chrome 用约 1 分钟断流/黑屏 | NPM websocket 超时未加长,在 Proxy Host 的 Advanced 加 `proxy_read_timeout 86400s;`(见 NPM 章节) |
+| Chrome 无视频/音频 | Selkies(WebCodecs)要求安全上下文,公网必须走 `https://`,确认 NPM 已配 SSL 证书 |
+| 编辑 `frpc.toml` 后 `./frpc.sh reload` 报 `no such file or directory` | Docker 单文件 bind mount 的 stale-inode 问题:编辑器原子替换文件后,容器内挂载仍指向旧 inode(`ls` 看得到但 `open` 失败)。执行 `cd frpc && docker compose up -d --force-recreate` 重建容器,配置会在启动时重新加载 |
 
 ## ⚠️ Notes / 注意事项
 
@@ -439,3 +502,5 @@ cd frpc-visitor
 - **frpc 不需要 CI**:frpc 跑在本地 Mac,改配置后渲染 `frpc.toml` 再 `./frpc.sh restart` 即可,无需走 GitHub Actions。frpc-visitor 同理。
 - **frpc 与 frpc-visitor 不要同机运行**:两者默认都映射 `7400` 端口(admin UI),同机会冲突。若必须同机,改 `frpc-visitor/visitor.toml.tpl` 的 `webServer.port` 与 `docker-compose.yml` 的对应端口映射(如改为 7401)。
 - **frpc admin UI 不暴露公网**:模板已移除把 7400 端口反代到公网的 `[[proxies]]`,admin UI 仅本地访问。如确需远程热重载,请用 SSH 隧道而非公网反代。frpc-visitor 的端口映射已加 `127.0.0.1:` 前缀,LAN 不可达。
+- **chrome-deploy 双层同密鉴权**:容器层 `CUSTOM_USER/PASSWORD` 与 frp 层 `httpUser/httpPassword` 使用相同凭据,浏览器只输一次密码同时通过两层(与 pi-web 同款做法)。容器内会话自带终端且 sudo 免密,凭据务必够强。
+- **chrome-deploy/config/ 不入库**:该目录是浏览器 profile(含 Cookie/历史记录/下载),已被 `.gitignore` 排除;chromium 端口只绑定 `127.0.0.1:3000`,LAN 不可达,公网仅经 frp 通道。
