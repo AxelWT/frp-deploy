@@ -11,6 +11,7 @@ services:
       - PGID=1000
       - TZ=Asia/Shanghai
       - TITLE=Chrome           # 网页 UI 标签标题
+      - PIXELFLUX_WAYLAND=true # Chromium 走原生 Wayland,避免启动时 Xwayland 未就绪导致应用秒退(黑屏)
       - CUSTOM_USER=${CHROME_USER}       # 容器层 HTTP Basic Auth
       - PASSWORD=${CHROME_PASSWORD}
       # - CHROME_CLI=https://www.baidu.com   # 可选:启动页 URL 或 Chromium 启动参数

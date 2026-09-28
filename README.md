@@ -481,6 +481,7 @@ cd chrome-deploy
 | visitor 启动报 `bind: address already in use` | 修改 `visitor.toml` 中对应 visitor 的 `bindPort`(默认 12026 / 12028),并在 `docker-compose.yml` 的 `ports` 同步修改 |
 | visitor 连不上(超时) | 1. `serverName` 是否与被访问端 `[[proxies]].name` 完全一致;2. `secretKey`(`FRPC_P2P_SECRET`)两端是否一致;3. 被访问端 frpc 是否在线(`./frpc.sh status`);4. frps 是否可达 |
 | visitor 日志无 `fallback to stcp` 也连不通 | 1. `fallbackTo` 指向的 stcp proxy name 是否正确;2. 被访问端是否同时配置了 xtcp + stcp 两段 proxy |
+| Chrome 页面黑屏(能连上但无画面) | 容器内 chromium 应用未存活(`docker exec chromium pgrep -c chromium` 为 0):labwc autostart 走 X11 模式,启动瞬间 Xwayland 未就绪导致应用秒退且无报错。compose 需设 `PIXELFLUX_WAYLAND=true` 让 Chromium 走原生 Wayland 后重建容器 |
 | Chrome 标签页崩溃("Aw, Snap!") | `shm_size` 不足,把 `chrome-deploy/docker-compose.yml` 的 `shm_size` 提到 `2gb` 后 `./chrome.sh restart` |
 | Chrome 用约 1 分钟断流/黑屏 | NPM websocket 超时未加长,在 Proxy Host 的 Advanced 加 `proxy_read_timeout 86400s;`(见 NPM 章节) |
 | Chrome 无视频/音频 | Selkies(WebCodecs)要求安全上下文,公网必须走 `https://`,确认 NPM 已配 SSL 证书 |
