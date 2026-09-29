@@ -303,6 +303,8 @@ frp-deploy/
 ### Part 4: 网页版 Chrome(chrome-deploy,可选)
 
 > 在浏览器里直接操作的完整 Chrome(苹果 Silicon 原生 arm64 镜像,Selkies 网页串流,支持剪贴板同步/文件上传/音频),经 frp 暴露到公网。
+>
+> **中文输入**:Selkies 键盘事件通道转发本地输入法组词会丢字(上游已知缺陷,见故障排查表)。容器已内置 fcitx5 拼音——compose 的 `DOCKER_MODS`/`INSTALL_PACKAGES` 在启动时自动安装,`config/.config/labwc/autostart` 自启 fcitx5,`config/.config/fcitx5/profile` 预置拼音,`config/.config/fcitx5/config` 预设"默认中文模式 + 单击左 Shift 切换"(两个骨架文件已入库,见注意事项)。**先把本地 Mac 输入法切到英文**再连远端:每个输入框默认就是拼音模式,直接按键打拼音,候选框在远端渲染;**单击左 Shift** 切英文,再单击切回中文。`Ctrl+Space` 会被 macOS 本地截胡用于切换输入源,远端收不到,勿用。
 
 1. **配置凭据并启动**:
 
@@ -485,6 +487,8 @@ cd chrome-deploy
 | Chrome 标签页崩溃("Aw, Snap!") | `shm_size` 不足,把 `chrome-deploy/docker-compose.yml` 的 `shm_size` 提到 `2gb` 后 `./chrome.sh restart` |
 | Chrome 用约 1 分钟断流/黑屏 | NPM websocket 超时未加长,在 Proxy Host 的 Advanced 加 `proxy_read_timeout 86400s;`(见 NPM 章节) |
 | Chrome 无视频/音频 | Selkies(WebCodecs)要求安全上下文,公网必须走 `https://`,确认 NPM 已配 SSL 证书 |
+| Chrome 中文输入丢字/连打几字只上屏最后一个 | Selkies 2.0 键盘事件通道对本地输入法组词(composition)转发的已知缺陷,上游重构中(selkies-project/selkies #214)。**方案:容器内 fcitx5 拼音直接打中文(默认已装,见 Part 4)**——本地输入法切英文 → 远端直接按键打拼音(ASCII 键事件通道可靠,候选框在远端渲染),单 Shift 切中英文。备用:①侧栏键盘按钮本地组词注入 ②本地打好中文复制,远端 Cmd+V 粘贴(剪贴板同步默认开启,Mac 的 Cmd 可直接当 Ctrl 用) |
+| 远端打不出中文(无候选框/只上英文字母) | 1. DOCKER_MODS 装包需 1-2 分钟,容器重启后稍等再测(`docker exec chromium pgrep fcitx5` 应有 PID);2. `CHROME_CLI` 必须含 `--enable-wayland-ime`,否则 Chromium 不接 Wayland 输入法;3. 默认中文模式依赖入库骨架文件 `config/.config/fcitx5/config` 的 `[Behavior] ActiveByDefault=True`,勿删;4. 单 Shift 会切到英文态,再单 Shift 切回中文 |
 | 编辑 `frpc.toml` 后 `./frpc.sh reload` 报 `no such file or directory` | Docker 单文件 bind mount 的 stale-inode 问题:编辑器原子替换文件后,容器内挂载仍指向旧 inode(`ls` 看得到但 `open` 失败)。执行 `cd frpc && docker compose up -d --force-recreate` 重建容器,配置会在启动时重新加载 |
 
 ## ⚠️ Notes / 注意事项
@@ -504,4 +508,4 @@ cd chrome-deploy
 - **frpc 与 frpc-visitor 不要同机运行**:两者默认都映射 `7400` 端口(admin UI),同机会冲突。若必须同机,改 `frpc-visitor/visitor.toml.tpl` 的 `webServer.port` 与 `docker-compose.yml` 的对应端口映射(如改为 7401)。
 - **frpc admin UI 不暴露公网**:模板已移除把 7400 端口反代到公网的 `[[proxies]]`,admin UI 仅本地访问。如确需远程热重载,请用 SSH 隧道而非公网反代。frpc-visitor 的端口映射已加 `127.0.0.1:` 前缀,LAN 不可达。
 - **chrome-deploy 双层同密鉴权**:容器层 `CUSTOM_USER/PASSWORD` 与 frp 层 `httpUser/httpPassword` 使用相同凭据,浏览器只输一次密码同时通过两层(与 pi-web 同款做法)。容器内会话自带终端且 sudo 免密,凭据务必够强。
-- **chrome-deploy/config/ 不入库**:该目录是浏览器 profile(含 Cookie/历史记录/下载),已被 `.gitignore` 排除;chromium 端口只绑定 `127.0.0.1:3000`,LAN 不可达,公网仅经 frp 通道。
+- **chrome-deploy/config/ 基本不入库**:该目录是浏览器 profile(含 Cookie/历史记录/下载),已被 `.gitignore` 排除;例外仅 3 个无敏感信息的输入法/自启骨架文件(`config/.config/fcitx5/config`、`config/.config/fcitx5/profile`、`config/.config/labwc/autostart`,经 `.gitignore` 负向豁免入库,新机器克隆后开箱即用中文输入)。chromium 端口只绑定 `127.0.0.1:3000`,LAN 不可达,公网仅经 frp 通道。

@@ -7,7 +7,17 @@ frpc-visitor/visitor.toml
 .env
 
 # 浏览器 profile/下载(含 Cookie 等敏感数据)
-chrome-deploy/config/
+# 例外:输入法/自启骨架配置(无敏感信息,新机器克隆后开箱即用中文输入)经负向豁免入库
+chrome-deploy/config/*
+!chrome-deploy/config/.config
+chrome-deploy/config/.config/*
+!chrome-deploy/config/.config/fcitx5
+chrome-deploy/config/.config/fcitx5/*
+!chrome-deploy/config/.config/fcitx5/config
+!chrome-deploy/config/.config/fcitx5/profile
+!chrome-deploy/config/.config/labwc
+chrome-deploy/config/.config/labwc/*
+!chrome-deploy/config/.config/labwc/autostart
 
 # macOS
 .DS_Store

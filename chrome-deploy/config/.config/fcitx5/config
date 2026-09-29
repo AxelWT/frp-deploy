@@ -1,0 +1,14 @@
+# fcitx5 热键配置
+# 切换中英文:
+#   Ctrl+Space —— Linux 惯例(但 macOS 会本地截胡用于切换输入源,远端收不到)
+#   单击左 Shift —— fcitx 经典切换,Mac 不拦截,推荐
+#   Ctrl+Shift  —— 枚举下一个输入法(备用)
+[Behavior]
+# 每个新输入上下文默认进入中文(激活)模式,无需依赖热键(Mac 会截胡 Ctrl+Space)
+ActiveByDefault=True
+
+[Hotkey]
+TriggerKeys=Control+space
+AltTriggerKeys=Shift_L
+EnumerateForwardKeys=Control+Shift
+EnumerateBackwardKeys=
